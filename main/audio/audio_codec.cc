@@ -12,6 +12,14 @@ AudioCodec::AudioCodec() {
 }
 
 AudioCodec::~AudioCodec() {
+    if (tx_handle_ != nullptr) {
+        i2s_channel_disable(tx_handle_);
+        i2s_del_channel(tx_handle_);
+    }
+    if (rx_handle_ != nullptr) {
+        i2s_channel_disable(rx_handle_);
+        i2s_del_channel(rx_handle_);
+    }
 }
 
 void AudioCodec::OutputData(std::vector<int16_t>& data) {

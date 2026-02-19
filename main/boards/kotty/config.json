@@ -1,0 +1,17 @@
+{
+    "target": "esp32s3",
+    "builds": [
+        {
+            "name": "kotty",
+            "sdkconfig_append": [
+                "CONFIG_BOARD_TYPE_KOTTY=y",
+                "CONFIG_USE_AUDIO_PROCESSOR=y",
+                "CONFIG_LCD_GC9A01_240X240=y",
+                "CONFIG_LANGUAGE_ES_ES=y",
+                "CONFIG_FLASH_CUSTOM_ASSETS=y",
+                "CONFIG_CUSTOM_ASSETS_FILE=\"boards/kotty/assets.bin\"",
+                "CONFIG_OTA_URL=\"https://kotty.ai/kotty-server/xiaozhi/ota/\""
+            ]
+        }
+    ]
+}

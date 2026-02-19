@@ -84,9 +84,9 @@ void Es8311AudioCodec::UpdateDeviceState() {
             .sample_rate = (uint32_t)input_sample_rate_,
             .mclk_multiple = 0,
         };
-        ESP_ERROR_CHECK(esp_codec_dev_open(dev_, &fs));
-        ESP_ERROR_CHECK(esp_codec_dev_set_in_gain(dev_, input_gain_));
-        ESP_ERROR_CHECK(esp_codec_dev_set_out_vol(dev_, output_volume_));
+        ESP_ERROR_CHECK_WITHOUT_ABORT(esp_codec_dev_open(dev_, &fs));
+        ESP_ERROR_CHECK_WITHOUT_ABORT(esp_codec_dev_set_in_gain(dev_, input_gain_));
+        ESP_ERROR_CHECK_WITHOUT_ABORT(esp_codec_dev_set_out_vol(dev_, output_volume_));
     } else if (!input_enabled_ && !output_enabled_ && dev_ != nullptr) {
         esp_codec_dev_close(dev_);
         dev_ = nullptr;
@@ -154,7 +154,12 @@ void Es8311AudioCodec::CreateDuplexChannels(gpio_num_t mclk, gpio_num_t bclk, gp
 }
 
 void Es8311AudioCodec::SetOutputVolume(int volume) {
-    ESP_ERROR_CHECK(esp_codec_dev_set_out_vol(dev_, volume));
+    if (dev_ != nullptr) {
+        esp_err_t err = esp_codec_dev_set_out_vol(dev_, volume);
+        if (err != ESP_OK) {
+            ESP_LOGE(TAG, "SetOutputVolume failed: %s", esp_err_to_name(err));
+        }
+    }
     AudioCodec::SetOutputVolume(volume);
 }
 
