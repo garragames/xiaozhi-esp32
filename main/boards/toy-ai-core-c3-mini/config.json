@@ -9,7 +9,8 @@
                 "CONFIG_USE_ESP_WAKE_WORD=y",
                 "CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y",
                 "CONFIG_LCD_GC9A01_240X240=y",
-                "CONFIG_LCD_TYPE_GC9A01_SERIAL=y"
+                "CONFIG_LCD_TYPE_GC9A01_SERIAL=y",
+                "CONFIG_LANGUAGE_ES_ES=y"
             ]
         }
     ]

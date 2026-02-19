@@ -1060,4 +1060,3 @@ void Application::ResetProtocol() {
         protocol_.reset();
     });
 }
-

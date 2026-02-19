@@ -24,6 +24,8 @@
 
 #define TAG "ToyAiCoreC3Mini"
 
+// No vendor-specific sequence; use driver defaults
+
 class ToyAiCoreC3MiniBoard : public WifiBoard {
 private:
     i2c_master_bus_handle_t codec_i2c_bus_ = nullptr;
@@ -55,24 +57,14 @@ private:
         };
         
         ESP_LOGI(TAG, "Init I2C (SDA=%d, SCL=%d) @ 100kHz", AUDIO_CODEC_I2C_SDA_PIN, AUDIO_CODEC_I2C_SCL_PIN);
-        // Velocidad moderada para robustez en línea compartida
-        if (i2c_new_master_bus(&i2c_bus_cfg, &codec_i2c_bus_) == ESP_OK) {
-            // Escanea posibles direcciones del ES8311 (0x18-0x1B)
-            uint8_t addrs[] = {0x18, 0x19, 0x1A, 0x1B};
-            for (uint8_t a : addrs) {
-                if (i2c_master_probe(codec_i2c_bus_, a, 50) == ESP_OK) {
-                    codec_addr_ = a;
-                    codec_present_ = true;
-                    ESP_LOGI(TAG, "ES8311 detected on I2C addr 0x%02x", a);
-                    break;
-                }
-            }
-            if (!codec_present_) {
-                ESP_LOGE(TAG, "ES8311 NOT detected on addrs 0x18-0x1B");
-            }
-        } else {
-            ESP_LOGE(TAG, "I2C Init Failed");
+        // Deshabilitamos temporalmente el ES8311 para evitar timeouts que disparan WDT
+        codec_present_ = false;
+        codec_addr_ = AUDIO_CODEC_ES8311_ADDR;
+        if (codec_i2c_bus_) {
+            i2c_del_master_bus(codec_i2c_bus_);
+            codec_i2c_bus_ = nullptr;
         }
+        ESP_LOGW(TAG, "I2C codec init saltado (NoAudioCodec se usará)");
     }
 
     void InitializeSpi() {
@@ -91,7 +83,7 @@ private:
         io_config.cs_gpio_num = LCD_CS_PIN;
         io_config.dc_gpio_num = LCD_DC_PIN;
         io_config.spi_mode = 0; // GC9A01 trabaja en modo 0
-        io_config.pclk_hz = 20 * 1000 * 1000; // 40MHz probado en GC9A01
+        io_config.pclk_hz = 10 * 1000 * 1000; // 10MHz para estabilidad
         io_config.trans_queue_depth = 10;
         io_config.lcd_cmd_bits = 8;
         io_config.lcd_param_bits = 8;
@@ -100,18 +92,32 @@ private:
 
         esp_lcd_panel_dev_config_t panel_config = {};
         panel_config.reset_gpio_num = LCD_RST_PIN;
-        panel_config.rgb_endian = LCD_RGB_ENDIAN_BGR;
+        panel_config.color_space = ESP_LCD_COLOR_SPACE_RGB;
         panel_config.bits_per_pixel = 16;
+
+        panel_config.vendor_config = nullptr; // usar init por defecto
         
         ESP_ERROR_CHECK(esp_lcd_new_panel_gc9a01(panel_io_, &panel_config, &panel_));
 
         esp_lcd_panel_reset(panel_);
         esp_lcd_panel_init(panel_);
         
-        // Inversión: true para corregir imagen en negativo
+        // Invertir como en el test-pin para evitar negativo de colores
         esp_lcd_panel_invert_color(panel_, true); 
         
         esp_lcd_panel_disp_on_off(panel_, true);
+
+        // Patrón rápido de verificación de color (se ejecuta una vez al arranque)
+        auto fill_color = [&](uint16_t color) {
+            static std::vector<uint16_t> line(DISPLAY_WIDTH, color);
+            for (int y = 0; y < DISPLAY_HEIGHT; ++y) {
+                esp_lcd_panel_draw_bitmap(panel_, 0, y, DISPLAY_WIDTH, y + 1, line.data());
+            }
+            vTaskDelay(pdMS_TO_TICKS(500));
+        };
+        // Prueba breve: solo rojo para verificar color y no demorar arranque
+        ESP_LOGI(TAG, "Test color RED");
+        fill_color(0xF800); // rojo
 
         display_ = new SpiLcdDisplay(panel_io_, panel_, DISPLAY_WIDTH, DISPLAY_HEIGHT, 0, 0, DISPLAY_MIRROR_X, DISPLAY_MIRROR_Y, false);
     }
