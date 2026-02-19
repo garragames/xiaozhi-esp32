@@ -53,19 +53,20 @@ static const gc9a01_lcd_init_cmd_t gc9107_lcd_init_cmds[] = {
 
 class ToyAiCoreC3MiniBoard : public WifiBoard {
 private:
+    i2c_master_bus_handle_t codec_i2c_bus_ = nullptr;
+    bool codec_present_ = false;
     esp_lcd_panel_io_handle_t panel_io_ = nullptr;
     esp_lcd_panel_handle_t panel_ = nullptr;
     Display* display_ = nullptr;
     Led* led_ = nullptr;
     Button boot_button_;
 
-    void ConfigureCodecAndReleaseI2C() {
+    void InitCodecI2C() {
         gpio_reset_pin(LCD_CS_PIN);
         gpio_set_direction(LCD_CS_PIN, GPIO_MODE_OUTPUT);
         gpio_set_level(LCD_CS_PIN, 1);
         ESP_LOGI(TAG, "LCD CS forced HIGH");
 
-        i2c_master_bus_handle_t i2c_bus = nullptr;
         i2c_master_bus_config_t i2c_bus_cfg = {
             .i2c_port = I2C_NUM_0,
             .sda_io_num = AUDIO_CODEC_I2C_SDA_PIN,
@@ -79,16 +80,13 @@ private:
         
         ESP_LOGI(TAG, "Init I2C (SDA=%d, SCL=%d) @ 50kHz", AUDIO_CODEC_I2C_SDA_PIN, AUDIO_CODEC_I2C_SCL_PIN);
         // Bajar velocidad I2C a 50kHz para mayor robustez en pin compartido
-        if (i2c_new_master_bus(&i2c_bus_cfg, &i2c_bus) == ESP_OK) {
-            {
-                Es8311AudioCodec codec(i2c_bus, I2C_NUM_0, AUDIO_INPUT_SAMPLE_RATE, AUDIO_OUTPUT_SAMPLE_RATE,
-                    GPIO_NUM_NC, GPIO_NUM_NC, GPIO_NUM_NC, GPIO_NUM_NC, GPIO_NUM_NC,
-                    GPIO_NUM_NC, AUDIO_CODEC_ES8311_ADDR);
-                codec.SetOutputVolume(70);
-                ESP_LOGI(TAG, "Codec Configured");
+        if (i2c_new_master_bus(&i2c_bus_cfg, &codec_i2c_bus_) == ESP_OK) {
+            if (i2c_master_probe(codec_i2c_bus_, AUDIO_CODEC_ES8311_ADDR, 50) == ESP_OK) {
+                ESP_LOGI(TAG, "ES8311 detected on I2C addr 0x%02x", AUDIO_CODEC_ES8311_ADDR);
+                codec_present_ = true;
+            } else {
+                ESP_LOGE(TAG, "ES8311 NOT detected on I2C addr 0x%02x", AUDIO_CODEC_ES8311_ADDR);
             }
-            i2c_del_master_bus(i2c_bus);
-            ESP_LOGI(TAG, "I2C Released");
         } else {
             ESP_LOGE(TAG, "I2C Init Failed");
         }
@@ -109,8 +107,8 @@ private:
         esp_lcd_panel_io_spi_config_t io_config = {};
         io_config.cs_gpio_num = LCD_CS_PIN;
         io_config.dc_gpio_num = LCD_DC_PIN;
-        io_config.spi_mode = 3; // PROBAR MODO 3 (Fix para rayas/sincronía)
-        io_config.pclk_hz = 10 * 1000 * 1000; // 10MHz (Reducido para pin compartido)
+        io_config.spi_mode = 0; // GC9A01 trabaja en modo 0
+        io_config.pclk_hz = 10 * 1000 * 1000; // 10MHz probado sin ruido
         io_config.trans_queue_depth = 10;
         io_config.lcd_cmd_bits = 8;
         io_config.lcd_param_bits = 8;
@@ -133,8 +131,8 @@ private:
         esp_lcd_panel_reset(panel_);
         esp_lcd_panel_init(panel_);
         
-        // Inversión: false (Ya que se veía gris/negativo)
-        esp_lcd_panel_invert_color(panel_, false); 
+        // Inversión: true para corregir imagen en negativo
+        esp_lcd_panel_invert_color(panel_, true); 
         
         esp_lcd_panel_disp_on_off(panel_, true);
 
@@ -155,11 +153,13 @@ public:
         
         vTaskDelay(pdMS_TO_TICKS(1000));
 
-        ConfigureCodecAndReleaseI2C(); 
+        InitCodecI2C(); 
         InitializeSpi();               
         InitializeGc9a01Display();
         
-        led_ = new SingleLed(BUILTIN_LED_GPIO);
+        if (BUILTIN_LED_GPIO != GPIO_NUM_NC) {
+            led_ = new SingleLed(BUILTIN_LED_GPIO);
+        }
 
         boot_button_.OnClick([this]() {
             Application::GetInstance().ToggleChatState();
@@ -174,12 +174,24 @@ public:
     }
 
     virtual Backlight* GetBacklight() override { return nullptr; }
-    virtual Led* GetLed() override { return led_; }
+    virtual Led* GetLed() override {
+        if (led_ == nullptr) {
+            static NoLed no_led;
+            return &no_led;
+        }
+        return led_;
+    }
     
     virtual AudioCodec* GetAudioCodec() override {
-        static NoAudioCodecDuplex i2s_codec(AUDIO_INPUT_SAMPLE_RATE, AUDIO_OUTPUT_SAMPLE_RATE,
-            AUDIO_I2S_GPIO_BCLK, AUDIO_I2S_GPIO_WS, AUDIO_I2S_GPIO_DSDIN, AUDIO_I2S_GPIO_ASDOUT);
-        return &i2s_codec;
+        if (codec_i2c_bus_ == nullptr || !codec_present_) {
+            static NoAudioCodecDuplex i2s_codec(AUDIO_INPUT_SAMPLE_RATE, AUDIO_OUTPUT_SAMPLE_RATE,
+                AUDIO_I2S_GPIO_BCLK, AUDIO_I2S_GPIO_WS, AUDIO_I2S_GPIO_DSDIN, AUDIO_I2S_GPIO_ASDOUT);
+            return &i2s_codec;
+        }
+        static Es8311AudioCodec audio_codec(codec_i2c_bus_, I2C_NUM_0, AUDIO_INPUT_SAMPLE_RATE, AUDIO_OUTPUT_SAMPLE_RATE,
+            AUDIO_I2S_GPIO_MCLK, AUDIO_I2S_GPIO_BCLK, AUDIO_I2S_GPIO_LRCK, AUDIO_I2S_GPIO_DSDIN, AUDIO_I2S_GPIO_ASDOUT,
+            AUDIO_CODEC_PA_PIN, AUDIO_CODEC_ES8311_ADDR, true /*use_mclk*/);
+        return &audio_codec;
     }
 
     virtual bool GetBatteryLevel(int &level, bool& charging, bool& discharging) override {
