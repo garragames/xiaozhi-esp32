@@ -55,6 +55,7 @@ class ToyAiCoreC3MiniBoard : public WifiBoard {
 private:
     i2c_master_bus_handle_t codec_i2c_bus_ = nullptr;
     bool codec_present_ = false;
+    uint8_t codec_addr_ = AUDIO_CODEC_ES8311_ADDR;
     esp_lcd_panel_io_handle_t panel_io_ = nullptr;
     esp_lcd_panel_handle_t panel_ = nullptr;
     Display* display_ = nullptr;
@@ -67,6 +68,8 @@ private:
         gpio_set_level(LCD_CS_PIN, 1);
         ESP_LOGI(TAG, "LCD CS forced HIGH");
 
+        vTaskDelay(pdMS_TO_TICKS(100)); // Deja que el ES8311 alimente antes de sondear
+
         i2c_master_bus_config_t i2c_bus_cfg = {
             .i2c_port = I2C_NUM_0,
             .sda_io_num = AUDIO_CODEC_I2C_SDA_PIN,
@@ -78,14 +81,21 @@ private:
             .flags = { .enable_internal_pullup = 1 },
         };
         
-        ESP_LOGI(TAG, "Init I2C (SDA=%d, SCL=%d) @ 50kHz", AUDIO_CODEC_I2C_SDA_PIN, AUDIO_CODEC_I2C_SCL_PIN);
-        // Bajar velocidad I2C a 50kHz para mayor robustez en pin compartido
+        ESP_LOGI(TAG, "Init I2C (SDA=%d, SCL=%d) @ 100kHz", AUDIO_CODEC_I2C_SDA_PIN, AUDIO_CODEC_I2C_SCL_PIN);
+        // Velocidad moderada para robustez en línea compartida
         if (i2c_new_master_bus(&i2c_bus_cfg, &codec_i2c_bus_) == ESP_OK) {
-            if (i2c_master_probe(codec_i2c_bus_, AUDIO_CODEC_ES8311_ADDR, 50) == ESP_OK) {
-                ESP_LOGI(TAG, "ES8311 detected on I2C addr 0x%02x", AUDIO_CODEC_ES8311_ADDR);
-                codec_present_ = true;
-            } else {
-                ESP_LOGE(TAG, "ES8311 NOT detected on I2C addr 0x%02x", AUDIO_CODEC_ES8311_ADDR);
+            // Escanea posibles direcciones del ES8311 (0x18-0x1B)
+            uint8_t addrs[] = {0x18, 0x19, 0x1A, 0x1B};
+            for (uint8_t a : addrs) {
+                if (i2c_master_probe(codec_i2c_bus_, a, 50) == ESP_OK) {
+                    codec_addr_ = a;
+                    codec_present_ = true;
+                    ESP_LOGI(TAG, "ES8311 detected on I2C addr 0x%02x", a);
+                    break;
+                }
+            }
+            if (!codec_present_) {
+                ESP_LOGE(TAG, "ES8311 NOT detected on addrs 0x18-0x1B");
             }
         } else {
             ESP_LOGE(TAG, "I2C Init Failed");
@@ -108,7 +118,7 @@ private:
         io_config.cs_gpio_num = LCD_CS_PIN;
         io_config.dc_gpio_num = LCD_DC_PIN;
         io_config.spi_mode = 0; // GC9A01 trabaja en modo 0
-        io_config.pclk_hz = 10 * 1000 * 1000; // 10MHz probado sin ruido
+        io_config.pclk_hz = 40 * 1000 * 1000; // 40MHz probado en GC9A01
         io_config.trans_queue_depth = 10;
         io_config.lcd_cmd_bits = 8;
         io_config.lcd_param_bits = 8;
@@ -190,7 +200,7 @@ public:
         }
         static Es8311AudioCodec audio_codec(codec_i2c_bus_, I2C_NUM_0, AUDIO_INPUT_SAMPLE_RATE, AUDIO_OUTPUT_SAMPLE_RATE,
             AUDIO_I2S_GPIO_MCLK, AUDIO_I2S_GPIO_BCLK, AUDIO_I2S_GPIO_LRCK, AUDIO_I2S_GPIO_DSDIN, AUDIO_I2S_GPIO_ASDOUT,
-            AUDIO_CODEC_PA_PIN, AUDIO_CODEC_ES8311_ADDR, true /*use_mclk*/);
+            AUDIO_CODEC_PA_PIN, codec_addr_, true /*use_mclk*/);
         return &audio_codec;
     }
 
