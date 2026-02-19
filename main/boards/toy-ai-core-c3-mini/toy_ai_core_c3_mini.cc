@@ -24,33 +24,6 @@
 
 #define TAG "ToyAiCoreC3Mini"
 
-static const gc9a01_lcd_init_cmd_t gc9107_lcd_init_cmds[] = {
-    {0xfe, (uint8_t[]){0x00}, 0, 0},
-    {0xef, (uint8_t[]){0x00}, 0, 0},
-    {0xb0, (uint8_t[]){0xc0}, 1, 0},
-    {0xb1, (uint8_t[]){0x80}, 1, 0},
-    {0xb2, (uint8_t[]){0x27}, 1, 0},
-    {0xb3, (uint8_t[]){0x13}, 1, 0},
-    {0xb6, (uint8_t[]){0x19}, 1, 0},
-    {0xb7, (uint8_t[]){0x05}, 1, 0},
-    {0xac, (uint8_t[]){0xc8}, 1, 0},
-    {0xab, (uint8_t[]){0x0f}, 1, 0},
-    {0x3a, (uint8_t[]){0x05}, 1, 0},
-    {0xb4, (uint8_t[]){0x04}, 1, 0},
-    {0xa8, (uint8_t[]){0x08}, 1, 0},
-    {0xb8, (uint8_t[]){0x08}, 1, 0},
-    {0xea, (uint8_t[]){0x02}, 1, 0},
-    {0xe8, (uint8_t[]){0x2A}, 1, 0},
-    {0xe9, (uint8_t[]){0x47}, 1, 0},
-    {0xe7, (uint8_t[]){0x5f}, 1, 0},
-    {0xc6, (uint8_t[]){0x21}, 1, 0},
-    {0xc7, (uint8_t[]){0x15}, 1, 0},
-    {0xf0, (uint8_t[]){0x1D, 0x38, 0x09, 0x4D, 0x92, 0x2F, 0x35, 0x52, 0x1E, 0x0C, 0x04, 0x12, 0x14, 0x1f}, 14, 0},
-    {0xf1, (uint8_t[]){0x16, 0x40, 0x1C, 0x54, 0xA9, 0x2D, 0x2E, 0x56, 0x10, 0x0D, 0x0C, 0x1A, 0x14, 0x1E}, 14, 0},
-    {0xf4, (uint8_t[]){0x00, 0x00, 0xFF}, 3, 0},
-    {0xba, (uint8_t[]){0xFF, 0xFF}, 2, 0},
-};
-
 class ToyAiCoreC3MiniBoard : public WifiBoard {
 private:
     i2c_master_bus_handle_t codec_i2c_bus_ = nullptr;
@@ -118,7 +91,7 @@ private:
         io_config.cs_gpio_num = LCD_CS_PIN;
         io_config.dc_gpio_num = LCD_DC_PIN;
         io_config.spi_mode = 0; // GC9A01 trabaja en modo 0
-        io_config.pclk_hz = 40 * 1000 * 1000; // 40MHz probado en GC9A01
+        io_config.pclk_hz = 20 * 1000 * 1000; // 40MHz probado en GC9A01
         io_config.trans_queue_depth = 10;
         io_config.lcd_cmd_bits = 8;
         io_config.lcd_param_bits = 8;
@@ -130,12 +103,6 @@ private:
         panel_config.rgb_endian = LCD_RGB_ENDIAN_BGR;
         panel_config.bits_per_pixel = 16;
         
-        gc9a01_vendor_config_t gc9107_vendor_config = {
-            .init_cmds = gc9107_lcd_init_cmds,
-            .init_cmds_size = sizeof(gc9107_lcd_init_cmds) / sizeof(gc9a01_lcd_init_cmd_t),
-        };
-        panel_config.vendor_config = &gc9107_vendor_config;
-        
         ESP_ERROR_CHECK(esp_lcd_new_panel_gc9a01(panel_io_, &panel_config, &panel_));
 
         esp_lcd_panel_reset(panel_);
@@ -145,14 +112,6 @@ private:
         esp_lcd_panel_invert_color(panel_, true); 
         
         esp_lcd_panel_disp_on_off(panel_, true);
-
-        // Prueba de color
-        ESP_LOGI(TAG, "Test: Filling screen with RED");
-        std::vector<uint16_t> color_buf(DISPLAY_WIDTH * 10, 0xF800);
-        for (int y = 0; y < DISPLAY_HEIGHT; y += 10) {
-            esp_lcd_panel_draw_bitmap(panel_, 0, y, DISPLAY_WIDTH, y + 10, color_buf.data());
-        }
-        vTaskDelay(pdMS_TO_TICKS(500));
 
         display_ = new SpiLcdDisplay(panel_io_, panel_, DISPLAY_WIDTH, DISPLAY_HEIGHT, 0, 0, DISPLAY_MIRROR_X, DISPLAY_MIRROR_Y, false);
     }

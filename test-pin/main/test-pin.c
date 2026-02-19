@@ -112,7 +112,6 @@ static void brute_force_lcd_gc9a01(void) {
                     int rst = pin_set[ri];
                     if (rst == mosi || rst == cs || rst == sclk || rst == dc) continue;
 
-                    printf("------------------------------\n");
                     ESP_LOGW(TAG, "TRY LCD: MOSI=%d SCLK=%d CS=%d DC=%d RST=%d (si ves colores, ESTE es el pinmap)",
                              mosi, sclk, cs, dc, rst);
 
