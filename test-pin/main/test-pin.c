@@ -35,6 +35,7 @@ static bool i2c_probe_addr(i2c_port_t port, uint8_t addr) {
 
 static void scan_i2c_for_es8311(void) {
     ESP_LOGW(TAG, "=== I2C scan (bus pins) buscando ES8311 (0x18/0x19/0x1A/0x1B comunes) ===");
+    bool driver_installed = false;
 
     for (int i = 0; i < (int)(sizeof(candidate_pins)/sizeof(candidate_pins[0])); i++) {
         for (int j = 0; j < (int)(sizeof(candidate_pins)/sizeof(candidate_pins[0])); j++) {
@@ -52,9 +53,13 @@ static void scan_i2c_for_es8311(void) {
                 .master.clk_speed = 400000
             };
 
-            i2c_driver_delete(I2C_NUM_0);
+            if (driver_installed) {
+                i2c_driver_delete(I2C_NUM_0);
+                driver_installed = false;
+            }
             if (i2c_param_config(I2C_NUM_0, &conf) != ESP_OK) continue;
             if (i2c_driver_install(I2C_NUM_0, conf.mode, 0, 0, 0) != ESP_OK) continue;
+            driver_installed = true;
 
             // Probar direcciones típicas ES8311
             bool hit18 = i2c_probe_addr(I2C_NUM_0, 0x18);

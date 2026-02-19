@@ -57,14 +57,30 @@ private:
         };
         
         ESP_LOGI(TAG, "Init I2C (SDA=%d, SCL=%d) @ 100kHz", AUDIO_CODEC_I2C_SDA_PIN, AUDIO_CODEC_I2C_SCL_PIN);
-        // Deshabilitamos temporalmente el ES8311 para evitar timeouts que disparan WDT
-        codec_present_ = false;
-        codec_addr_ = AUDIO_CODEC_ES8311_ADDR;
-        if (codec_i2c_bus_) {
-            i2c_del_master_bus(codec_i2c_bus_);
-            codec_i2c_bus_ = nullptr;
+        gpio_reset_pin(LCD_CS_PIN);
+        gpio_set_direction(LCD_CS_PIN, GPIO_MODE_OUTPUT);
+        gpio_set_level(LCD_CS_PIN, 1);
+        ESP_LOGI(TAG, "LCD CS forced HIGH");
+
+        vTaskDelay(pdMS_TO_TICKS(50)); // Permitir power-up del codec
+
+        ESP_LOGI(TAG, "Init I2C (SDA=%d, SCL=%d) driver_ng @ ~100kHz", AUDIO_CODEC_I2C_SDA_PIN, AUDIO_CODEC_I2C_SCL_PIN);
+        if (i2c_new_master_bus(&i2c_bus_cfg, &codec_i2c_bus_) == ESP_OK) {
+            uint8_t addrs[] = {0x1B, 0x1A, 0x19, 0x18};
+            for (uint8_t a : addrs) {
+                if (i2c_master_probe(codec_i2c_bus_, a, 200) == ESP_OK) {
+                    codec_addr_ = a;
+                    codec_present_ = true;
+                    ESP_LOGI(TAG, "ES8311 detected on I2C addr 0x%02x", a);
+                    break;
+                }
+            }
+            if (!codec_present_) {
+                ESP_LOGE(TAG, "ES8311 NOT detected on addrs 0x18-0x1B");
+            }
+        } else {
+            ESP_LOGE(TAG, "I2C Init Failed");
         }
-        ESP_LOGW(TAG, "I2C codec init saltado (NoAudioCodec se usará)");
     }
 
     void InitializeSpi() {

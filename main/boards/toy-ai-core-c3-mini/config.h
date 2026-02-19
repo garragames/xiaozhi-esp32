@@ -20,7 +20,8 @@
 /* ---------- I2C (ES8311 control) ---------- */
 #define AUDIO_CODEC_I2C_SDA_PIN  GPIO_NUM_3
 #define AUDIO_CODEC_I2C_SCL_PIN  GPIO_NUM_4
-#define AUDIO_CODEC_ES8311_ADDR  0x18
+#define AUDIO_CODEC_ES8311_ADDR  ES8311_CODEC_DEFAULT_ADDR
+//#define AUDIO_CODEC_ES8311_ADDR  0x18
 #define AUDIO_CODEC_PA_PIN       GPIO_NUM_NC
 
 /* ---------- LCD SPI (GC9A01) ---------- */
@@ -29,7 +30,7 @@
 #define LCD_SCLK_PIN            GPIO_NUM_0
 #define LCD_CS_PIN              GPIO_NUM_20
 #define LCD_DC_PIN              GPIO_NUM_1
-#define LCD_RST_PIN             GPIO_NUM_3 // Usado en la primera combinación que mostró color
+#define LCD_RST_PIN             GPIO_NUM_NC // Usado en la primera combinación que mostró color
 #define LCD_BL_PIN              GPIO_NUM_NC // backlight fijo en hardware
 
 /* ---------- Otros ---------- */
