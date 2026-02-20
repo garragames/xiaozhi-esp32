@@ -93,7 +93,7 @@ private:
 
         esp_lcd_panel_dev_config_t panel_config = {};
         panel_config.reset_gpio_num = LCD_RST_PIN;
-        panel_config.color_space = ESP_LCD_COLOR_SPACE_RGB;
+        panel_config.color_space = ESP_LCD_COLOR_SPACE_BGR;
         panel_config.bits_per_pixel = 16;
         
         ESP_ERROR_CHECK(esp_lcd_new_panel_gc9a01(panel_io_, &panel_config, &panel_));
@@ -101,6 +101,7 @@ private:
         esp_lcd_panel_reset(panel_);
         esp_lcd_panel_init(panel_);
         
+        esp_lcd_panel_invert_color(panel_, true);
         esp_lcd_panel_invert_color(panel_, true);
         esp_lcd_panel_disp_on_off(panel_, true);
 
