@@ -57,9 +57,9 @@ static const gc9a01_lcd_init_cmd_t gc9107_lcd_init_cmds[] = {
 };
 #endif
  
-#define TAG "Kotty"
+#define TAG "KottyEsp32S3"
 
-class Kotty : public WifiBoard {
+class KottyEsp32S3Board : public WifiBoard {
 private:
  
     Button boot_button_;
@@ -139,7 +139,7 @@ private:
     }
 
 public:
-    Kotty() :
+    KottyEsp32S3Board() :
         boot_button_(BOOT_BUTTON_GPIO) {
         InitializeSpi();
         InitializeLcdDisplay();
@@ -178,6 +178,10 @@ public:
         }
         return nullptr;
     }
+
+    virtual std::string GetBoardType() override {
+        return "kotty-esp32-s3";
+    }
 };
 
-DECLARE_BOARD(Kotty);
+DECLARE_BOARD(KottyEsp32S3Board);

@@ -19,9 +19,9 @@
 #include <esp_lcd_gc9a01.h>
 #include <esp_lcd_panel_vendor.h>
 
-#define TAG "KottyEsp32Board"
+#define TAG "KottyEsp32C3Board"
 
-class KottyEsp32Board : public WifiBoard {
+class KottyEsp32C3Board : public WifiBoard {
 private:
     i2c_master_bus_handle_t codec_i2c_bus_;
     esp_lcd_panel_io_handle_t panel_io_ = nullptr;
@@ -102,7 +102,6 @@ private:
         esp_lcd_panel_init(panel_);
         
         esp_lcd_panel_invert_color(panel_, true);
-        esp_lcd_panel_invert_color(panel_, true);
         esp_lcd_panel_disp_on_off(panel_, true);
 
         display_ = new SpiLcdDisplay(panel_io_, panel_, DISPLAY_WIDTH, DISPLAY_HEIGHT, 0, 0, DISPLAY_MIRROR_X, DISPLAY_MIRROR_Y, false);
@@ -140,7 +139,7 @@ private:
     }
 
 public:
-    KottyEsp32Board() : boot_button_(BOOT_BUTTON_GPIO) {
+    KottyEsp32C3Board() : boot_button_(BOOT_BUTTON_GPIO) {
         InitializeCodecI2c();
         InitializeGc9a01Display();
         InitializeButtons();
@@ -149,7 +148,7 @@ public:
 
         // ESP32C3 VDD SPI pin as GPIO
         esp_efuse_write_field_bit(ESP_EFUSE_VDD_SPI_AS_GPIO);
-        ESP_LOGI(TAG, "KottyEsp32Board Initialized");
+        ESP_LOGI(TAG, "KottyEsp32C3Board Initialized");
     }
 
     virtual Led* GetLed() override {
@@ -175,7 +174,7 @@ public:
         WifiBoard::SetPowerSaveLevel(level);
     }
     
-    virtual std::string GetBoardType() override { return "kotty-esp32"; }
+    virtual std::string GetBoardType() override { return "kotty-esp32-c3"; }
 };
 
-DECLARE_BOARD(KottyEsp32Board);
+DECLARE_BOARD(KottyEsp32C3Board);
