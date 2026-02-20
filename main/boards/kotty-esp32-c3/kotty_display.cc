@@ -73,15 +73,9 @@ void KottyDisplay::SetEmotion(const char* emotion) {
         lv_image_set_src(kotty_image_, &kotty_standby);
     }
 
-    // Map emotions to icons if needed
-    if (strcmp(emotion, "neutral") != 0) {
-        const char* utf8 = font_awesome_get_utf8(emotion);
-        if (utf8) {
-            lv_label_set_text(state_icon_label_, utf8);
-        }
-    } else {
-        lv_label_set_text(state_icon_label_, "");
-    }
+    // Intentionally ignore the emotion content.
+    // We do NOT want to display happy/sad/angry icons.
+    // The state_icon_label_ is exclusively for system status (mic, speaker, etc.)
 }
 
 void KottyDisplay::SetStatus(const char* status) {
@@ -96,13 +90,17 @@ void KottyDisplay::SetStatus(const char* status) {
 
     if (strcmp(status, Lang::Strings::LISTENING) == 0) {
         lv_label_set_text(state_icon_label_, FONT_AWESOME_MICROPHONE);
+        lv_obj_set_style_text_color(state_icon_label_, lv_color_hex(0xFF0000), 0); // RED
     } else if (strcmp(status, Lang::Strings::SPEAKING) == 0) {
         lv_label_set_text(state_icon_label_, FONT_AWESOME_VOLUME_HIGH);
+        lv_obj_set_style_text_color(state_icon_label_, lv_color_hex(0x00FF00), 0); // GREEN
     } else if (strcmp(status, Lang::Strings::CONNECTING) == 0 || 
                strcmp(status, Lang::Strings::LOADING_PROTOCOL) == 0) {
         lv_label_set_text(state_icon_label_, FONT_AWESOME_GEAR);
+        lv_obj_set_style_text_color(state_icon_label_, lv_color_hex(0xFFFF00), 0); // YELLOW
     } else if (strcmp(status, Lang::Strings::STANDBY) == 0) {
         lv_label_set_text(state_icon_label_, FONT_AWESOME_CLOCK);
+        lv_obj_set_style_text_color(state_icon_label_, lv_color_hex(0x0000FF), 0); // BLUE
     } else {
         lv_label_set_text(state_icon_label_, "");
     }
