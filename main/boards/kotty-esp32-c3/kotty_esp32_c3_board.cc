@@ -1,6 +1,6 @@
 #include "wifi_board.h"
 #include "codecs/es8311_audio_codec.h"
-#include "display/lcd_display.h"
+#include "kotty_display.h"
 #include "application.h"
 #include "button.h"
 #include "led/single_led.h"
@@ -104,7 +104,7 @@ private:
         esp_lcd_panel_invert_color(panel_, true);
         esp_lcd_panel_disp_on_off(panel_, true);
 
-        display_ = new SpiLcdDisplay(panel_io_, panel_, DISPLAY_WIDTH, DISPLAY_HEIGHT, 0, 0, DISPLAY_MIRROR_X, DISPLAY_MIRROR_Y, false);
+        display_ = new KottyDisplay(panel_io_, panel_, DISPLAY_WIDTH, DISPLAY_HEIGHT, 0, 0, DISPLAY_MIRROR_X, DISPLAY_MIRROR_Y, false);
     }
 
     void InitializeButtons() {
