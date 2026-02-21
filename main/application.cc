@@ -810,12 +810,18 @@ void Application::HandleStateChangedEvent() {
             display->SetStatus(Lang::Strings::STANDBY);
             display->SetEmotion("neutral");
             audio_service_.EnableVoiceProcessing(false);
+            // Give the audio task some time to finish the processing loop and release resources
+            // This prevents race conditions on ESP32-C3 when switching from VAD to Wake Word
+            vTaskDelay(pdMS_TO_TICKS(100));
             audio_service_.EnableWakeWordDetection(true);
             break;
         case kDeviceStateConnecting:
             display->SetStatus(Lang::Strings::CONNECTING);
             display->SetEmotion("neutral");
             display->SetChatMessage("system", "");
+            // Disable Wake Word immediately to save resources (RAM/CPU) for SSL handshake
+            audio_service_.EnableWakeWordDetection(false);
+            audio_service_.EnableVoiceProcessing(false);
             break;
         case kDeviceStateListening:
             display->SetStatus(Lang::Strings::LISTENING);
